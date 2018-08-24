@@ -4,8 +4,8 @@
 #include <RCSwitch.h>
 
 /* NODE DATA */
-const int NODE_HUM_ID = 1;
-const int NODE_TEMP_ID = 2;
+const uint8_t NODE_HUM_ID = 1;
+const uint8_t NODE_TEMP_ID = 2;
 const int PULSE_LENGTH = 320;
 
 /* hardware data */
@@ -64,7 +64,7 @@ void loop() {
   Serial.print(t);
   Serial.print(" *C ");
 
-  uint8_t lowBatery = 0;
+  bool lowBatery = 0;
   if (readVcc() < 2900) {
     lowBatery = 1;
   }
@@ -75,34 +75,29 @@ void loop() {
     AAAAAAAB CCCCCCCC CCCCCCCC
     AAAAAAA         : ID
     B               : low batery
-    CCCCCCCC        : integer value
-    CCCCCCCC        : float value First bit determine negative
+    CCCCCCCC        : signed integer value
+    CCCCCCCC        : floating part value
   */
 
-  uint32_t data[3];
+ byte data[3];
 
+  //due casting byte array start reading from length-1, the position of data is inverted
   // humidity
-  data[0] = NODE_HUM_ID << 1 | lowBatery;
-  data[1] = trunc(h);
-  data[2] = abs(static_cast<int>(h * 100)) % 100;
+  data[2] = (NODE_HUM_ID << 1 | lowBatery);
+  data[1] = (int8_t)trunc(h);
+  data[0] = (int8_t)(abs(static_cast<int>(h * 100)) % 100);
 
-  uint32_t coded = data[0] << 16 | data[1] << 8 | data[2];
-  Serial.println(coded, BIN);
-  mySwitch.send(coded, 24);
+  Serial.println(*((unsigned long*)data), BIN);
+  mySwitch.send(*((unsigned long*)data), 24);
   delay(300);
 
   // temperature
-  data[0] = NODE_TEMP_ID << 1 | lowBatery;
-  if (t < 0) {
-    data[1] = (uint8_t)abs(trunc(t)) | 0x80;
-  } else {
-    data[1] = abs(trunc(t));
-  }
-  data[2] = abs(static_cast<int>(t * 100)) % 100;
+  data[2] = (uint8_t)(NODE_TEMP_ID << 1 | lowBatery);
+  data[1] = (int8_t)trunc(t);
+  data[0] = (int8_t)(abs(static_cast<int>(t * 100)) % 100);
 
-  coded = data[0] << 16 | data[1] << 8 | data[2];
-  Serial.println(coded, BIN);
-  mySwitch.send(coded, 24);
+  Serial.println(*((unsigned long*)data), BIN);
+  mySwitch.send(*((unsigned long*)data), 24);
   // sleep
   deepSleep();
 }
